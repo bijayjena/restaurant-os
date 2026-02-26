@@ -16,7 +16,7 @@ Complete restaurant management system with customer ordering, kitchen display, d
 - React + TypeScript
 - Vite
 - Tailwind CSS + shadcn-ui
-- Supabase (Auth & Database)
+- Appwrite (Auth & Database)
 - React Router
 - React Query
 
@@ -31,16 +31,28 @@ npm run dev
 
 # Build for production
 npm run build
-
-# Run tests
-npm test
 ```
 
 ## Environment Setup
 
-Create a `.env` file with your Supabase credentials:
+Create a `.env` file with your Appwrite credentials:
 
 ```
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+VITE_APPWRITE_PROJECT_ID=your_appwrite_project_id
+VITE_APPWRITE_DATABASE_ID=your_appwrite_database_id
 ```
+
+## Appwrite Setup
+
+1. Create a new project in [Appwrite Console](https://cloud.appwrite.io)
+2. Create a database and note the Database ID
+3. Create the following collections:
+   - `tenants` - Restaurant tenant information
+   - `profiles` - User profiles
+   - `user_roles` - User role assignments
+   - `menu_items` - Menu items
+   - `orders` - Customer orders
+   - `order_items` - Order line items
+4. Configure authentication methods (Email/Password)
+5. Update your `.env` file with the credentials

@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import type { AppRole, Tenant } from "@/lib/supabase";
+import { account, databases, DATABASE_ID, COLLECTIONS, Query } from "@/lib/appwrite";
+import type { AppRole, Tenant } from "@/lib/appwrite";
+import type { Models } from "appwrite";
 
 interface User {
   id: string;
@@ -37,47 +39,82 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     needsOnboarding: false,
   });
 
-  useEffect(() => {
-    // TODO: Replace with supabase.auth.onAuthStateChange
-    // For now, check if there's a mock session
-    const timer = setTimeout(() => {
+  const getUserRoles = async (userId: string): Promise<AppRole[]> => {
+    try {
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.USER_ROLES,
+        [Query.equal('user_id', userId)]
+      );
+      return response.documents.map((doc) => (doc as { role: AppRole }).role);
+    } catch {
+      return [];
+    }
+  };
+
+  const checkAuth = async () => {
+    try {
+      const session = await account.get();
+      const userRoles = await getUserRoles(session.$id);
+      
+      setState({
+        user: {
+          id: session.$id,
+          email: session.email,
+          full_name: session.name,
+        },
+        tenant: null,
+        roles: userRoles,
+        isLoading: false,
+        isAuthenticated: true,
+        needsOnboarding: userRoles.length === 0,
+      });
+    } catch {
       setState((prev) => ({ ...prev, isLoading: false }));
-    }, 500);
-    return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    checkAuth();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string) => {
-    // TODO: Replace with supabase.auth.signInWithPassword({ email, password })
-    setState((prev) => ({
-      ...prev,
-      user: { id: "mock-id", email, full_name: email.split("@")[0] },
-      isAuthenticated: true,
-      needsOnboarding: true, // will check tenant membership
-      isLoading: false,
-    }));
+    try {
+      await account.createEmailPasswordSession(email, password);
+      await checkAuth();
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const signup = async (email: string, password: string, fullName: string) => {
-    // TODO: Replace with supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
-    setState((prev) => ({
-      ...prev,
-      user: { id: "mock-id", email, full_name: fullName },
-      isAuthenticated: true,
-      needsOnboarding: true,
-      isLoading: false,
-    }));
+    try {
+      await account.create('unique()', email, password, fullName);
+      await account.createEmailPasswordSession(email, password);
+      await checkAuth();
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {
-    // TODO: Replace with supabase.auth.signOut()
-    setState({
-      user: null,
-      tenant: null,
-      roles: [],
-      isLoading: false,
-      isAuthenticated: false,
-      needsOnboarding: false,
-    });
+    try {
+      await account.deleteSession('current');
+      setState({
+        user: null,
+        tenant: null,
+        roles: [],
+        isLoading: false,
+        isAuthenticated: false,
+        needsOnboarding: false,
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   };
 
   const setTenant = (tenant: Tenant) => {
